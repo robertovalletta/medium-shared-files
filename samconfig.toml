@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "consumer-event-pub-sub-app"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-kciv8q0vwssu"
+s3_prefix = "consumer-event-pub-sub-app"
+region = "eu-central-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+

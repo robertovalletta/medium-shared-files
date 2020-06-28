@@ -1,0 +1,79 @@
+# This is the SAM template that represents the architecture of your serverless application
+# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-template-basics.html
+
+# The AWSTemplateFormatVersion identifies the capabilities of the template
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/format-version-structure.html
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  This project create the API Gateway, the lambda function that trigger on the API gateway, the SNS and another lambda function that writes on S3
+
+# Transform section specifies one or more macros that AWS CloudFormation uses to process your template
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/transform-section-structure.html
+Transform:
+- AWS::Serverless-2016-10-31
+
+
+# Resources declares the AWS resources that you want to include in the stack
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html
+Resources:
+  # This is an SNS Topic with all default configuration properties. To learn more about the available options, see
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-sns-topic.html
+  CustomerEventTopic:
+    Type: AWS::SNS::Topic
+
+  ConsumerEventBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketName: consumer-event-bucket
+
+  PublisherLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: The lambda function that trigger on API Gateway
+      Runtime: nodejs12.x
+      MemorySize: 128
+      Timeout: 100
+      Handler: src/handlers/publisher/event-publisher-function.publisherFunction
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /
+            Method: POST
+      Policies:
+        # Give Lambda basic execution Permission to the helloFromLambda
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt  CustomerEventTopic.TopicName
+        - AWSLambdaBasicExecutionRole
+      Environment:
+        Variables:
+          Topic: !Ref CustomerEventTopic
+
+  # This is the Lambda function definition associated with the source code: event-subscriber-function.js. For all available properties, see
+  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+  SubscriberLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: A Lambda function that logs the payload of messages sent to an associated SNS topic.
+      Runtime: nodejs12.x
+      Handler: src/handlers/subscriber/event-subscriber-function.subscriberFunction
+      MemorySize: 128
+      Timeout: 100
+      # This property associates this Lambda function with the SNS topic defined above, so that whenever the topic
+      # receives a message, the Lambda function is invoked
+      Events:
+        SNSTopicEvent:
+          Type: SNS
+          Properties:
+            Topic: !Ref CustomerEventTopic
+      Policies:
+        # Give Lambda basic execution Permission to the helloFromLambda
+        - AWSLambdaBasicExecutionRole
+        - S3WritePolicy:
+            BucketName: !Ref ConsumerEventBucket
+
+Outputs:
+  WebEndpoint:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
