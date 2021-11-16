@@ -6,7 +6,7 @@
     "dependencies": {
         "@hapi/joi": "^17.1.1",
         "@hapi/joi-date": "^2.0.1",
-        "aws-sdk": "^2.695.0"
+        "aws-sdk": "^2.814.0"
     },
     "devDependencies": {
         "jest": "^24.7.1"
